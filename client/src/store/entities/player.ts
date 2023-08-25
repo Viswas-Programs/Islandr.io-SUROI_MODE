@@ -34,6 +34,7 @@ interface AdditionalEntity {
 	skin: string | null;
 	deathImg: string | null;
 	onTopOfLoot: string | null;
+	currentHealItem: string | null;
 }
 
 class PlayerSupplier implements EntitySupplier {
@@ -54,6 +55,7 @@ export default class Player extends Entity {
 	currentSkinSVG: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
 	CurrentdeathImg: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
 	onTopOfLoot: string | null = null;
+	currentHealItem: string | null = null;
 	
 
 	constructor(minEntity: MinEntity & AdditionalEntity) {
@@ -77,6 +79,8 @@ export default class Player extends Entity {
 			const inventory = <Inventory>minEntity.inventory;
 			this.inventory = new Inventory(inventory.holding, inventory.slots, inventory.weapons.map(w => w ? castCorrectWeapon(w, w.type == WeaponType.GUN ? (<GunWeapon>w).magazine : 0) : w), inventory.ammos, inventory.utilities, inventory.healings);
 			this.inventory.backpackLevel = inventory.backpackLevel;
+			this.inventory.vestLevel = inventory.vestLevel;
+			this.inventory.helmetLevel = inventory.helmetLevel
 			for (let ii = 0; ii < inventory.weapons.length; ii++) {
 				if (ii == inventory.holding) weaponPanelDivs[ii].classList.add("selected");
 				else weaponPanelDivs[ii].classList.remove("selected");
@@ -117,8 +121,22 @@ export default class Player extends Entity {
 				ctx.strokeStyle = "#000000";
 				circleFromCenter(ctx, 0, 0, radius, true, true);
 			}
-			ctx.drawImage(this.currentSkinSVG, -radius, -radius, radius * 2 , radius * 2 );
-
+			
+			ctx.drawImage(this.currentSkinSVG, -radius, -radius, radius * 2, radius * 2);
+			if (this.inventory.helmetLevel) {
+				console.log("helmetLevel check passed")
+				if (this.inventory.helmetLevel == 1) ctx.fillStyle = "#0000FF";
+				else if (this.inventory.helmetLevel == 2) ctx.fillStyle = "#808080";
+				else if (this.inventory.helmetLevel == 3) ctx.fillStyle = "#A9A9A9";
+				else if (this.inventory.helmetLevel == 4) ctx.fillStyle = "#000000";
+				else ctx.fillStyle = "#ff00ff"
+				console.log("fillstyles defined")
+				ctx.lineWidth = 2
+				ctx.strokeStyle = "#000000";
+				console.log("linewidth and strokestyle defined")
+				circleFromCenter(ctx, 0, 0, radius * 0.7, true, true);
+				console.log("circle drawn!")
+			}
 			// We will leave the transform for the weapon
 			// If player is holding nothing, render fist
 			var weapon = WEAPON_SUPPLIERS.get("fists")!.create();
@@ -159,6 +177,9 @@ export class FullPlayer extends Player {
 	healTicks!: number;
 	maxHealTicks!: number;
 	onTopOfLoot!: string | null;
+	currentHealItem!: string | null;
+	skin!: string | null;
+	deathImg!: string | null;
 
 	copy(minEntity: MinEntity & AdditionalEntity) {
 		super.copy(minEntity);
@@ -166,11 +187,15 @@ export class FullPlayer extends Player {
 		this.maxHealth = minEntity.maxHealth;
 		this.boost = minEntity.boost;
 		this.maxBoost = minEntity.maxBoost;
+		this.onTopOfLoot = minEntity.onTopOfLoot;
+		this.currentHealItem = minEntity.currentHealItem;
 		this.scope = minEntity.scope;
 		this.canInteract = minEntity.canInteract || false;
 		this.reloadTicks = minEntity.reloadTicks;
 		this.maxReloadTicks = minEntity.maxReloadTicks;
 		this.healTicks = minEntity.healTicks;
 		this.maxHealTicks = minEntity.maxHealTicks;
+		this.skin = minEntity.skin;
+		this.deathImg = minEntity.deathImg;
 	}
 }
