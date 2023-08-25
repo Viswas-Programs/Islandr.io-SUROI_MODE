@@ -42,7 +42,7 @@ var connected = false;
 
 async function init(address: string) {
   // Initialize the websocket
-  var protocol = "wss";
+  var protocol = "ws";
   // if ((<HTMLInputElement>document.getElementById("wss")).checked) protocol += "s";
   ws = new WebSocket(`${protocol}://${address}`);
   ws.binaryType = "arraybuffer";
