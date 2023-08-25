@@ -6,13 +6,13 @@ import Player from "./player";
 
 export default class Vest extends Item {
 	static readonly VEST_REDUCTION: number[] = [];
-	type = "Vest";
+	type = "vest";
 	name: string;
 	hitbox = new CircleHitbox(1);
 	level: number;
 
 	static {
-		const data = JSON.parse(fs.readFileSync("../data/vest_reduction.json", { encoding: "utf8" }));
+		const data = JSON.parse(fs.readFileSync("../data/config/vest_reduction.json", { encoding: "utf8" }));
 		this.VEST_REDUCTION.push(...data);
 	}
 
@@ -33,6 +33,7 @@ export default class Vest extends Item {
 			world.entities.push(vest);
 		}
 		player.inventory.vestLevel = this.level;
+		world.onceSounds.push({"path": "item_usage/vest_wear.mp3", "position": this.position})
 		return true;
 	}
 
