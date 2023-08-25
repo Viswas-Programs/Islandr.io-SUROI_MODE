@@ -33,8 +33,14 @@
     "typescript": "^5.0.2"
   },
   "dependencies": {
+    "cookies-utils": "^1.0.0",
     "csv-parser": "^3.0.0",
     "express": "^4.18.2",
-    "mime-types": "^2.1.35"
+    "howler": "^2.2.3",
+    "jquery": "^3.7.0",
+    "mime-types": "^2.1.35",
+    "msgpack-lite": "^0.1.26",
+    "pako": "^2.1.0",
+    "ws": "^8.13.0"
   }
 }
