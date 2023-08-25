@@ -1,0 +1,39 @@
+{
+	"__comment": "Rarity can be filtered. For example, normal crate pulls rarity >= 0, while AWM crate only pulls rarity >= 3",
+	"jm9": {
+		"rarity": 0,
+		"weight": 10
+	},
+	"mp4.5": {
+		"rarity": 0,
+		"weight": 9
+	},
+	"m960": {
+		"rarity": 0,
+		"weight": 8
+	},
+	"m1120": {
+		"rarity": 0,
+		"weight": 8
+	},
+	"mp222": {
+		"rarity": 0,
+		"weight": 7
+	},
+	"ak47": {
+		"rarity": 1,
+		"weight": 7
+	},
+	"mosin_nagant": {
+		"rarity": 2,
+		"weight": 5
+	},
+	"sv98": {
+		"rarity": 2,
+		"weight": 4
+	},
+	"awc": {
+		"rarity": 5,
+		"weight": 1
+	}
+}
