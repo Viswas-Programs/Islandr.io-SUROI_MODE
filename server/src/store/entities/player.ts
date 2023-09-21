@@ -1,13 +1,16 @@
 import { world } from "../..";
 import { GLOBAL_UNIT_MULTIPLIER, TICKS_PER_SECOND } from "../../constants";
-import { updateUserScore } from "../../currencyUpdate";
+//import { updateUserScore } from "../../currencyUpdate";
 import { Entity, Inventory } from "../../types/entity";
 import { PickupableEntity } from "../../types/extensions";
 import { CircleHitbox, Vec2 } from "../../types/math";
 import { CollisionType, GunColor } from "../../types/misc";
 import { Obstacle } from "../../types/obstacle";
+import { Particle } from "../../types/particle";
 import { GunWeapon, WeaponType } from "../../types/weapon";
-import { spawnAmmo, spawnGun } from "../../utils";
+import { changeCurrency, spawnAmmo, spawnGun } from "../../utils";
+import { Roof } from "../obstacles";
+import { Pond, River, Sea } from "../terrains";
 import Backpack from "./backpack";
 import Healing from "./healing";
 import Helmet from "./helmet";
@@ -43,8 +46,14 @@ export default class Player extends Entity {
 	deathImg: string | null;
 	// Track zone damage ticks
 	zoneDamageTicks = 2 * TICKS_PER_SECOND;
+	// Track ripple particle ticks
+	rippleTicks = 0;
 
-	constructor(id: string, username: string, skin: string | null, deathImg: string | null) {
+	// Server-side only
+	accessToken?: string;
+	killCount = 0;
+
+	constructor(id: string, username: string, skin: string | null, deathImg: string | null, accessToken?: string) {
 		super();
 		this.id = id;
 		this.onTopOfLoot = null;
@@ -54,6 +63,7 @@ export default class Player extends Entity {
 		console.log("from player.ts server skin > " + this.skin + " and death image = " + this.deathImg)
 		this.inventory = Inventory.defaultEmptyInventory();
 		this.currentHealItem = null;
+		this.accessToken = accessToken;
 	}
 
 	setVelocity(velocity?: Vec2) {
@@ -94,8 +104,8 @@ export default class Player extends Entity {
 		const weapon = this.inventory.getWeapon()!;
 		//if weapon == undef then do not reset speed
 		if(weapon){
-			if (weapon.name != this.lastHolding) {
-				this.lastHolding = weapon.name;
+			if (weapon.nameId != this.lastHolding) {
+				this.lastHolding = weapon.nameId;
 				// Allows sniper switching
 				this.attackLock = 0;
 				this.maxReloadTicks = this.reloadTicks = 0;
@@ -104,17 +114,20 @@ export default class Player extends Entity {
 			}
 		}
 		super.tick(entities, obstacles);
-		for (const entity of entities) {
-			if (entity.type == "player" && this.collided(entity) && entity.health == 0) {
-				updateUserScore(100)
-			}
+		// Terrain particle
+		const terrain = world.terrainAtPos(this.position);
+		if ([Pond.ID, River.ID, Sea.ID].includes(terrain.id)) {
+			if (this.rippleTicks <= 0) {
+				world.particles.push(new Particle("ripple", this.position, 0.5));
+				this.rippleTicks = 30;
+			} else if (this.velocity.magnitudeSqr() != 0) this.rippleTicks--;
 		}
 		// Check for entity hitbox intersection
 		let breaked = false;
 		for (const entity of entities) {
 			if (entity.hitbox.inside(this.position, entity.position, entity.direction) && (<any>entity)['picked']) {
 				this.canInteract = true;
-				this.onTopOfLoot = entity.name;
+				this.onTopOfLoot = entity.translationKey();
 				// Only interact when trying
 				if (this.tryInteracting) {
 					this.canInteract = false;
@@ -138,6 +151,13 @@ export default class Player extends Entity {
 			if (!weapon.auto) this.tryAttacking = false;
 			this.markDirty();
 		}
+		// Building collision handling
+		const rooflessAdd = new Set<string>();
+		const rooflessDel = new Set<string>();
+		for (const building of world.buildings) {
+			if (building.zones.some(z => z.hitbox.collideCircle(z.position.addVec(building.position), building.direction, this.hitbox, this.position, this.direction) != CollisionType.NONE)) rooflessAdd.add(building.id);
+			else rooflessDel.add(building.id);
+		}
 		// Collision handling
 		for (const obstacle of obstacles) {
 			const collisionType = obstacle.collided(this);
@@ -150,6 +170,12 @@ export default class Player extends Entity {
 					else if (collisionType == CollisionType.CIRCLE_RECT_LINE_INSIDE) this.handleCircleRectLineCollision(obstacle);
 					this.markDirty();
 				}
+			}
+			// For roof to be roofless
+			if (obstacle.type === Roof.ID) {
+				const roof = <Roof>obstacle;
+				if (rooflessAdd.has(roof.buildingId)) roof.addRoofless(this.id);
+				if (rooflessDel.has(roof.buildingId)) roof.delRoofless(this.id);
 			}
 		}
 
@@ -200,12 +226,12 @@ export default class Player extends Entity {
 		}
 	}
 
-	damage(dmg: number) {
+	damage(dmg: number, damager?: string) {
 		if (!this.vulnerable) return;
 		// Implement headshot multiplier in gun data later
-		if (Math.random() < 0.1 && this.inventory.helmetLevel) this.health -= dmg * Helmet.HELMET_REDUCTION[this.inventory.helmetLevel];
-		else if (this.inventory.vestLevel) this.health -= dmg * Vest.VEST_REDUCTION[this.inventory.vestLevel];
-		else this.health -= dmg
+		if (Math.random() < 0.1) this.health -= dmg * (1 - Helmet.HELMET_REDUCTION[this.inventory.helmetLevel]);
+		else this.health -= dmg * (1 - Vest.VEST_REDUCTION[this.inventory.vestLevel]);
+		this.potentialKiller = damager;
 		this.markDirty();
 	}
 
@@ -214,7 +240,7 @@ export default class Player extends Entity {
 		for (const weapon of this.inventory.weapons) {
 			if (weapon?.droppable) {
 				if (weapon instanceof GunWeapon) {
-					spawnGun(weapon.id, weapon.color, this.position, weapon.magazine);
+					spawnGun(weapon.nameId, weapon.color, this.position, weapon.magazine);
 					// spawnAmmo(weapon.magazine, weapon.color, this.position);
 				}
 			}
@@ -247,6 +273,15 @@ export default class Player extends Entity {
 			world.entities.push(item);
 		}
 		world.playerDied();
+		// Add currency to user if they are logged in and have kills
+		if (this.potentialKiller) {
+			const entity = world.entities.find(e => e.id == this.potentialKiller);
+			if (entity?.type === this.type) (<Player>entity).killCount++;
+			console.log("sup boi", this.killCount)
+		}
+		if (this.accessToken && this.killCount) { changeCurrency(this.accessToken, this.killCount * 100); console.log("success") }
+		console.log(this.killCount, this.potentialKiller, typeof this.potentialKiller);
+		// Add kill count to killer
 	}
 
 	reload() {
@@ -254,7 +289,7 @@ export default class Player extends Entity {
 		const weapon = this.inventory.getWeapon();
 		if (weapon?.type != WeaponType.GUN) return;
 		const gun = <GunWeapon>weapon;
-		world.onceSounds.push({ path: "guns/" + gun.name + "_reload.mp3", position: this.position })
+		world.onceSounds.push({ path: `guns/${gun.nameId}_reload.mp3`, position: this.position })
 		if (!this.inventory.ammos[gun.color] || gun.magazine == gun.capacity) return;
 		this.maxReloadTicks = this.reloadTicks = gun.reloadTicks;
 		this.markDirty();
@@ -264,9 +299,9 @@ export default class Player extends Entity {
 		if (this.maxHealTicks) return;
 		if (!this.inventory.healings[item]) return;
 		if (this.health >= this.maxHealth && !Healing.healingData.get(item)?.boost) return;
-		world.onceSounds.push({ "path": `item_usage/${item}.mp3`, position: this.position })
+		world.onceSounds.push({ path: `item_usage/${item}.mp3`, position: this.position })
 		this.maxHealTicks = this.healTicks = Healing.healingData.get(item)!.time * TICKS_PER_SECOND / 1000;
-		this.currentHealItem = item;
+		this.currentHealItem = `entity.healing.${item}`;
 		this.healItem = item;
 		this.markDirty();
 	}

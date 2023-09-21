@@ -1,6 +1,8 @@
-import { CommonAngle, KeyBind } from "../constants";
+import { KeyBind, LANG } from "../constants";
 import { getTPS } from "../game";
+import { translate } from "../languages";
 import { FullPlayer } from "../store/entities";
+import { CommonAngles } from "../types/math";
 import { circleFromCenter, roundRect, strokeArc } from "../utils";
 
 export function drawPrompt(player: FullPlayer, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, scale: number) {
@@ -24,17 +26,18 @@ function drawInteract(player: FullPlayer, canvas: HTMLCanvasElement, ctx: Canvas
 	roundRect(ctx, (canvas.width - width) / 2, canvas.height / 2 + yOffset, width, size + 2 * padding, canvas.height / 108);
 	ctx.fillStyle = "#fff";
 	ctx.globalAlpha = 1;
-	ctx.fillText(`[${KeyBind.INTERACT.toUpperCase()}] Pick up ${player.onTopOfLoot}`, canvas.width / 2, canvas.height / 2 + padding + yOffset);
+	const split = player.onTopOfLoot?.split(" ");
+	ctx.fillText(translate(LANG, "prompt.pickup", KeyBind.INTERACT.toUpperCase(), split ? translate(LANG, split.shift()!, ...split) : ""), canvas.width / 2, canvas.height / 2 + padding + yOffset);
 }
 
 function drawReloading(player: FullPlayer, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
 	if (!player.reloadTicks) return;
-	drawCircleLoading(player.reloadTicks, player.maxReloadTicks, "Reloading", canvas, ctx);
+	drawCircleLoading(player.reloadTicks, player.maxReloadTicks, translate(LANG, "prompt.reload"), canvas, ctx);
 }
 
 function drawHealing(player: FullPlayer, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
 	if (!player.healTicks) return;
-	drawCircleLoading(player.healTicks, player.maxHealTicks, "Using " + player.currentHealItem, canvas, ctx);
+	drawCircleLoading(player.healTicks, player.maxHealTicks, translate(LANG, "prompt.heal", translate(LANG, player.currentHealItem)), canvas, ctx);
 }
 
 function drawCircleLoading(remain: number, max: number, message: string, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
@@ -49,7 +52,7 @@ function drawCircleLoading(remain: number, max: number, message: string, canvas:
 	ctx.strokeStyle = "#fff";
 	ctx.globalAlpha = 1;
 	ctx.lineWidth = size / 4;
-	strokeArc(ctx, canvas.width / 2, canvas.height / 2 - yOffset, size * 2 - ctx.lineWidth / 2, -CommonAngle.PI_TWO, -CommonAngle.PI_TWO + CommonAngle.TWO_PI * (max - remain) / max);
+	strokeArc(ctx, canvas.width / 2, canvas.height / 2 - yOffset, size * 2 - ctx.lineWidth / 2, -CommonAngles.PI_TWO, -CommonAngles.PI_TWO + CommonAngles.TWO_PI * (max - remain) / max);
 	ctx.fillStyle = "#fff";
 	ctx.fillText((remain / getTPS()).toFixed(2) + "s", canvas.width / 2, canvas.height / 2 - yOffset);
 	

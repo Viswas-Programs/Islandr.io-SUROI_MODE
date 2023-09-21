@@ -1,13 +1,3 @@
-export enum CommonAngle {
-	PI_FOUR = Math.PI / 4,
-	PI_TWO = Math.PI / 2,
-	TWO_PI = Math.PI * 2
-}
-
-export enum CommonNumber {
-	SIN45 = Math.sin(CommonAngle.PI_FOUR)
-}
-
 // More like configuration
 export enum KeyBind {
 	MENU = "Escape",
@@ -32,6 +22,8 @@ export const MINIMAP_SIZE = 100;
 export const TIMEOUT = 10000;
 // Translate original surviv.io game units to suit this one
 export const GLOBAL_UNIT_MULTIPLIER = 0.5;
+// For now we will assume the user uses English
+export const LANG = "en_us";
 
 export enum GunColor {
 	YELLOW = 0, // 9mm

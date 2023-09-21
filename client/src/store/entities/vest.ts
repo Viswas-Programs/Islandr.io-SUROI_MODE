@@ -8,7 +8,6 @@ import { getVestImagePath } from "../../textures";
 
 interface AdditionalEntity {
 	level: number;
-	name: string;
 }
 
 class VestSupplier implements EntitySupplier {
@@ -18,9 +17,8 @@ class VestSupplier implements EntitySupplier {
 }
 
 export default class Vest extends Entity {
-	static readonly vestImages: (HTMLImageElement & { loaded: boolean })[] = Array(4).fill(undefined);
+	static readonly vestImages: HTMLImageElement[] = Array(4).fill(undefined);
 	static readonly TYPE = "vest";
-	name!: string
 	type = Vest.TYPE;
 	level!: number;
 	zIndex = 8;
@@ -36,7 +34,6 @@ export default class Vest extends Entity {
 
 	copy(minEntity: MinEntity & AdditionalEntity) {
 		super.copy(minEntity);
-		this.name = minEntity.name;
 		this.level = minEntity.level;
 	}
 
@@ -51,10 +48,9 @@ export default class Vest extends Entity {
 		ctx.fillStyle = "#00000066"; // <- alpha/opacity
 		circleFromCenter(ctx, 0, 0, radius, true, false);
 		const img = Vest.vestImages[this.level - 1];
-		if (!img?.loaded) {
+		if (!img?.complete) {
 			if (!img) {
-				const image: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
-				image.onload = () => image.loaded = true;
+				const image = new Image();
 				image.src = getVestImagePath(this.level);
 				Vest.vestImages[this.level -1] = image;
 			}

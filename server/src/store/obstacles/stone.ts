@@ -31,7 +31,7 @@ export default class Stone extends Obstacle {
 
 	damage(dmg: number) {
 		super.damage(dmg);
-		world.onceSounds.push({ path: `obstacle/hit/stone/stone_hit.mp3`, position: this.position });
+		world.onceSounds.push({ path: `obstacles/stone_hit.mp3`, position: this.position });
 	}
 
 	die() {
@@ -40,10 +40,10 @@ export default class Stone extends Obstacle {
 			case "ak47": {
 				const ak47 = <GunWeapon>WEAPON_SUPPLIERS.get("mosin_nagant")?.create();
 				if (ak47)
-					spawnGun(ak47.id, ak47.color, this.position, ak47.ammo);
+					spawnGun(ak47.nameId, ak47.color, this.position, ak47.ammo);
 			}
 		}
-		world.onceSounds.push({ path: `obstacle/break/stone/stone_break.mp3`, position: this.position });
+		world.onceSounds.push({ path: `obstacles/stone_break.mp3`, position: this.position });
 	}
 
 	minimize() {

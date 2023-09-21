@@ -16,6 +16,7 @@ export default class Crate extends Obstacle {
 	static readonly TYPE = "crate";
 	type = Crate.TYPE;
 	special: "normal" | "grenade" | "soviet" | "awc";
+	damageParticle = "wood";
 
 	constructor(special: "normal" | "grenade" | "soviet" | "awc" = "normal") {
 		var hitbox: RectHitbox;
@@ -34,7 +35,7 @@ export default class Crate extends Obstacle {
 				health = 80;
 				break;
 		}
-		super(world, hitbox, hitbox.scaleAll(0.75), 80, 80, Vec2.UNIT_X);
+		super(world, hitbox, hitbox.scaleAll(0.75), health, health, Vec2.UNIT_X);
 		this.special = special;
 	}
 
@@ -44,7 +45,7 @@ export default class Crate extends Obstacle {
 
 	damage(dmg: number) {
 		super.damage(dmg);
-		world.onceSounds.push({ path: `objects/wood_break.mp3`, position: this.position });
+		world.onceSounds.push({ path: `obstacles/crate_hit.mp3`, position: this.position });
 	}
 
 	die() {
@@ -71,7 +72,7 @@ export default class Crate extends Obstacle {
 				return e;
 			}));
 		}
-		world.onceSounds.push({ path: "objects/crate_break.mp3", position: this.position });
+		world.onceSounds.push({ path: "obstacles/crate_break.mp3", position: this.position });
 	}
 
 	minimize() {

@@ -45,7 +45,6 @@ export interface TracerData {
 export type GunData = {
 	[key: string]: Partial<GunStats>
 } & {
-	name: string
 	color: GunColor
 	ammo: number
 	dual: boolean
@@ -85,7 +84,6 @@ interface MeleeStats {
 export type MeleeData = {
 	[key: string]: Partial<MeleeStats>
 } & {
-	name: string
 	reflective?: boolean
 	auto?: boolean
 	droppable: boolean
@@ -127,7 +125,6 @@ export type LootTableData = {
 }
 
 export type HealingData = {
-	name: string;
 	heal: number;
 	boost: number;
 	time: number;
@@ -142,16 +139,13 @@ export type ObstacleData = {
 
 export type TerrainData = {
 	type: string;
-	speed: number;
-	damage: number;
-	interval: number;
 	position: number[];
 	[key: string]: any;
 }
 
 export type BuildingData = {
 	obstacles: ObstacleData[];
-	zones?: { position: number[], hitbox: number[] | number }[];
+	zones?: { position: number[], hitbox: number[] | number, map?: boolean }[];
 	floors?: TerrainData[];
 	roofs?: ObstacleData[];
 	mapColor?: number;
@@ -162,4 +156,9 @@ export type RedZoneDataEntry = {
 	move: number;
 	damage: number;
 	area: number;
+}
+
+export type TextureData = {
+	path: string;
+	horizontalFill?: number;
 }

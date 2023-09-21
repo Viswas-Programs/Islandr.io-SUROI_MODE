@@ -1,4 +1,6 @@
 import { ENTITY_SUPPLIERS, Healing } from ".";
+import { LANG } from "../../constants";
+import { translate } from "../../languages";
 import { getWeaponImagePath } from "../../textures";
 import { Entity, Inventory, PartialInventory } from "../../types/entity";
 import { MinEntity, MinInventory } from "../../types/minimized";
@@ -52,8 +54,8 @@ export default class Player extends Entity {
 	inventory!: PartialInventory | Inventory;
 	zIndex = 9;
 	deathImg!: string | null
-	currentSkinSVG: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
-	CurrentdeathImg: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
+	currentSkinImg = new Image();
+	currentDeathImg = new Image();
 	onTopOfLoot: string | null = null;
 	currentHealItem: string | null = null;
 	
@@ -61,11 +63,8 @@ export default class Player extends Entity {
 	constructor(minEntity: MinEntity & AdditionalEntity) {
 		super(minEntity);
 		this.copy(minEntity);
-		console.log(this.onTopOfLoot);
-		this.currentSkinSVG.onload = () => this.currentSkinSVG.loaded = true;
-		this.currentSkinSVG.src = "assets/images/game/skins/" + this.skin + ".svg";
-		this.CurrentdeathImg.onload = () => this.CurrentdeathImg.loaded = true;
-		this.CurrentdeathImg.src = "assets/images/game/entities/" + this.deathImg + ".svg";
+		this.currentSkinImg.src = "assets/images/game/skins/" + this.skin + ".svg";
+		this.currentDeathImg.src = "assets/images/game/entities/" + this.deathImg + ".svg";
 	}
 
 	copy(minEntity: MinEntity & AdditionalEntity) {
@@ -84,8 +83,8 @@ export default class Player extends Entity {
 			for (let ii = 0; ii < inventory.weapons.length; ii++) {
 				if (ii == inventory.holding) weaponPanelDivs[ii].classList.add("selected");
 				else weaponPanelDivs[ii].classList.remove("selected");
-				weaponNameDivs[ii].innerHTML = inventory.weapons[ii]?.name || "&nbsp;";
-				const path = getWeaponImagePath(inventory.weapons[ii]?.id);
+				weaponNameDivs[ii].innerHTML = inventory.weapons[ii]?.nameId ? translate(LANG, `hud.weapon.${inventory.weapons[ii]?.nameId}`) : "&nbsp;";
+				const path = getWeaponImagePath(inventory.weapons[ii]?.nameId);
 				if (weaponImages[ii].path != path) {
 					weaponImages[ii].path = path;
 					weaponImages[ii].src = path;
@@ -122,20 +121,16 @@ export default class Player extends Entity {
 				circleFromCenter(ctx, 0, 0, radius, true, true);
 			}
 			
-			ctx.drawImage(this.currentSkinSVG, -radius, -radius, radius * 2, radius * 2);
+			if (this.currentSkinImg.complete) ctx.drawImage(this.currentSkinImg, -radius, -radius, radius * 2, radius * 2);
 			if (this.inventory.helmetLevel) {
-				console.log("helmetLevel check passed")
 				if (this.inventory.helmetLevel == 1) ctx.fillStyle = "#0000FF";
 				else if (this.inventory.helmetLevel == 2) ctx.fillStyle = "#808080";
 				else if (this.inventory.helmetLevel == 3) ctx.fillStyle = "#A9A9A9";
 				else if (this.inventory.helmetLevel == 4) ctx.fillStyle = "#000000";
-				else ctx.fillStyle = "#ff00ff"
-				console.log("fillstyles defined")
-				ctx.lineWidth = 2
+				else ctx.fillStyle = "#ff00ff";
+				ctx.lineWidth = 2;
 				ctx.strokeStyle = "#000000";
-				console.log("linewidth and strokestyle defined")
 				circleFromCenter(ctx, 0, 0, radius * 0.7, true, true);
-				console.log("circle drawn!")
 			}
 			// We will leave the transform for the weapon
 			// If player is holding nothing, render fist
@@ -145,7 +140,7 @@ export default class Player extends Entity {
 			weapon.render(this, canvas, ctx, scale);
 			ctx.resetTransform();
 		} else {
-			ctx.drawImage(this.CurrentdeathImg, -radius * 2, -radius * 2, radius * 4, radius * 4);
+			if (this.currentDeathImg.complete) ctx.drawImage(this.currentDeathImg, -radius * 2, -radius * 2, radius * 4, radius * 4);
 			ctx.textAlign = "center";
 			ctx.textBaseline = "top";
 			ctx.font = `700 ${scale}px Jura`;

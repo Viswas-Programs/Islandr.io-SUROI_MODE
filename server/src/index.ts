@@ -1,3 +1,4 @@
+import "dotenv/config";
 import * as ws from "ws";
 import { ID, receive, send, wait } from "./utils";
 import { MousePressPacket, MouseReleasePacket, MouseMovePacket, MovementPressPacket, MovementReleasePacket, GamePacket, ParticlesPacket, MapPacket, AckPacket, SwitchWeaponPacket, SoundPacket, UseHealingPacket, ResponsePacket } from "./types/packet";
@@ -5,10 +6,9 @@ import { DIRECTION_VEC, MAP_SIZE, TICKS_PER_SECOND } from "./constants";
 import { CommonAngles, Vec2 } from "./types/math";
 import { Player } from "./store/entities";
 import { World } from "./types/world";
-import { Plain, Pond, River, Sea } from "./store/terrains";
+import { Floor, Plain, Pond, River, Sea } from "./store/terrains";
 import { Tree, Bush, Crate, Stone, Barrel } from "./store/obstacles";
 import { BUILDING_SUPPLIERS } from "./store/buildings";
-import { getUserData } from "./currencyUpdate";
 
 export var ticksElapsed = 0;
 
@@ -33,7 +33,7 @@ export function reset() {
 	for (ii = 0; ii < 4; ii++) world.terrains.push(new Sea(ii));
 	
 	// Add buildings
-	for (ii = 0; ii < 5; ii++) {
+	for (ii = 0; ii < 2; ii++) {
 		const cross = BUILDING_SUPPLIERS.get("cross")!.create();
 		cross.setPosition(world.size.scale(Math.random(), Math.random()));
 		world.buildings.push(cross);
@@ -47,7 +47,15 @@ export function reset() {
 		outhouse.setDirection(Vec2.UNIT_X.addAngle(Math.floor(Math.random() * 4) * CommonAngles.PI_TWO));
 		world.buildings.push(outhouse);
 	}
-	
+	for (ii = 0; ii < 2; ii++) {
+		const outhouseMore = BUILDING_SUPPLIERS.get("outhouse_more")!.create();
+		do {
+			var position = world.size.scale(Math.random(), Math.random());
+		} while (world.terrainAtPos(position).id != "plain");
+		outhouseMore.setPosition(position);
+		outhouseMore.setDirection(Vec2.UNIT_X.addAngle(Math.floor(Math.random() * 4) * CommonAngles.PI_TWO));
+		world.buildings.push(outhouseMore);
+	}
 	// Add random obstacles
 	for (ii = 0; ii < 25; ii++) world.obstacles.push(new Tree());
 	world.obstacles.push(new Tree("mosin"));
@@ -79,19 +87,19 @@ server.on("connection", async socket => {
 	});
 
 	var username = "";
+	var accessToken: string | undefined = undefined;
 	var skin = "default";
 	var deathImg = "default";
-	var loggedIn = false;
 	// Communicate with the client by sending the ID and map size. The client should respond with ID and username, or else close the connection.
 	await Promise.race([wait(10000), new Promise<void>(resolve => {
 		send(socket, new AckPacket(id, TICKS_PER_SECOND, world.size, world.defaultTerrain));
 		socket.once("message", (msg: ArrayBuffer) => {
 			const decoded = <ResponsePacket>receive(msg);
-			if (decoded.id == id && decoded.username && decoded.skin && decoded.deathImg && decoded.loggedInUser) {
+			console.log(decoded.accessToken);
+			if (decoded.id == id && decoded.username && decoded.skin && decoded.deathImg && decoded.accessToken) {
 				connected = true;
 				username = decoded.username;
-				loggedIn = decoded.loggedInUser;
-				getUserData()
+				accessToken = decoded.accessToken;
 				skin = decoded.skin;
 				deathImg = decoded.deathImg;
 				console.log(skin)
@@ -103,12 +111,12 @@ server.on("connection", async socket => {
 	console.log(`A new player with ID ${id} connected!`);
 
 	// Create the new player and add it to the entity list.
-	const player = new Player(id, username, skin, deathImg);
+	const player = new Player(id, username, skin, deathImg, accessToken);
 	world.addPlayer(player);
 	player.boost *= 1.5;
 
 	// Send the player the entire map
-	send(socket, new MapPacket(world.obstacles, world.buildings, world.terrains));
+	send(socket, new MapPacket(world.obstacles, world.buildings, world.terrains.concat(...world.buildings.map(b => b.floors.map(fl => fl.terrain)))));
 	// Send the player initial objects
 	send(socket, new GamePacket(world.entities, world.obstacles.concat(...world.buildings.map(b => b.obstacles.map(o => o.obstacle))), player, world.playerCount, true));
 	// Send the player music

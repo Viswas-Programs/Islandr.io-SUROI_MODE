@@ -55,13 +55,13 @@ export interface MinMinObstacle {
 }
 
 export interface MinWeapon {
-	id: string;
-	name: string;
+	nameId: string;
 }
 
 export interface MinParticle {
 	id: string;
 	position: MinVec2;
+	size: number;
 }
 
 export interface MinTerrain {
@@ -72,6 +72,6 @@ export interface MinBuilding {
 	id: string;
 	position: MinVec2;
 	direction: MinVec2;
-	zones: { position: MinVec2, hitbox: MinHitbox }[];
+	zones: { position: MinVec2, hitbox: MinHitbox, map: boolean }[];
 	color?: number;
 }

@@ -2,9 +2,9 @@ import { Player } from "../store/entities";
 import { MinWeapon } from "./minimized";
 import { Renderable } from "./extenstions";
 import { roundRect, circleFromCenter } from "../utils";
-import { CircleHitbox, Vec2 } from "./math";
+import { CircleHitbox, CommonAngles, CommonNumbers, Vec2 } from "./math";
 import { GunData, MeleeData } from "./data";
-import { CommonNumber, CommonAngle, GunColor } from "../constants";
+import { GunColor } from "../constants";
 import { DEFINED_ANIMATIONS } from "../store/animations";
 import { getBarrelImagePath } from "../textures";
 
@@ -16,36 +16,32 @@ export enum WeaponType {
 
 export abstract class Weapon implements MinWeapon, Renderable {
 	type!: WeaponType;
-	id: string;
-	name: string;
+	nameId: string;
 
-	constructor(id: string, name: string) {
-		this.id = id;
-		this.name = name;
+	constructor(nameId: string) {
+		this.nameId = nameId;
 	}
 
 	abstract render(player: Player, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, scale: number): void;
 }
 
 export class MeleeWeapon extends Weapon {
+	static readonly fistImages = new Map<string, HTMLImageElement>();
 	type = WeaponType.MELEE;
 	static readonly FIST_ANIMATIONS = ["left_fist", "right_fist"];
-	readonly currentSkinSVG: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
 
-	constructor(id: string, data: MeleeData) {
-		super(id, data.name);
-		this.currentSkinSVG.onload = () => this.currentSkinSVG.loaded = true;
+	constructor(nameId: string, _data: MeleeData) {
+		super(nameId);
 	}
 
 	render(player: Player, _canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, scale: number) {
-		this.currentSkinSVG.src = "assets/images/game/fists/" + player.skin + ".svg";
 		const radius = scale * (<CircleHitbox> player.hitbox).radius;
-		const fistScale = radius * 1.2 * CommonNumber.SIN45;
+		const fistScale = radius * 1.2 * CommonNumbers.SIN45;
 		const fistExtend = Vec2.UNIT_X.scaleAll(fistScale);
 		const fists = [];
 		if (!MeleeWeapon.FIST_ANIMATIONS.some(a => player.animations.find(aa => aa.id == a))) {
-			fists.push(fistExtend.addVec(fistExtend.addAngle(CommonAngle.PI_TWO)));
-			fists.push(fistExtend.addVec(fistExtend.addAngle(-CommonAngle.PI_TWO)));
+			fists.push(fistExtend.addVec(fistExtend.addAngle(CommonAngles.PI_TWO)));
+			fists.push(fistExtend.addVec(fistExtend.addAngle(-CommonAngles.PI_TWO)));
 		} else {
 			for (const animation of player.animations) {
 				const anim = DEFINED_ANIMATIONS.get(animation.id);
@@ -61,7 +57,7 @@ export class MeleeWeapon extends Weapon {
 							break;
 						}
 					}
-					fists.push(fistExtend.addVec(fistExtend.addAngle(CommonAngle.PI_TWO * (-index * 2 + 1))));
+					fists.push(fistExtend.addVec(fistExtend.addAngle(CommonAngles.PI_TWO * (-index * 2 + 1))));
 				}
 			}
 		}
@@ -69,35 +65,37 @@ export class MeleeWeapon extends Weapon {
 		const fistRadius = radius / 3;
 		ctx.lineWidth = fistRadius / 3;
 		ctx.strokeStyle = "#000000";
-		for (const fist of fists) 
-		{//circleFromCenter(ctx, fist.x, fist.y, fistRadius, true, true);
-		ctx.drawImage(this.currentSkinSVG, fist.x - fistRadius, fist.y - fistRadius, fistRadius *2, fistRadius*2)}
+		const img = MeleeWeapon.fistImages.get(player.skin!);
+		if (!img) {
+			const newImg = new Image();
+			MeleeWeapon.fistImages.set(player.skin!, newImg);
+			newImg.src = "assets/images/game/fists/" + player.skin + ".svg";
+		} else if (img.complete)
+			for (const fist of fists) {
+				//circleFromCenter(ctx, fist.x, fist.y, fistRadius, true, true);
+				ctx.drawImage(img, fist.x - fistRadius, fist.y - fistRadius, fistRadius *2, fistRadius*2);
+			}
 	}
 }
 
 export class GunWeapon extends Weapon {
-	static readonly barrelImages = new Map<string, HTMLImageElement & { loaded: boolean }>();
+	static readonly barrelImages = new Map<string, HTMLImageElement>();
 
 	type = WeaponType.GUN;
 	color: GunColor;
 	length: number;
 	hasBarrelImage: boolean;
 	magazine: number;
-	readonly currentFistSVG: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
 
-	
-
-	constructor(id: string, data: GunData, magazine = 0) {
-		super(id, data.name);
+	constructor(nameId: string, data: GunData, magazine = 0) {
+		super(nameId);
 		this.color = data.color;
 		this.length = data.length;
 		this.hasBarrelImage = data.visuals.hasBarrelImage;
 		this.magazine = magazine;
-		this.currentFistSVG.onload = () => this.currentFistSVG.loaded = true;
 	}
 
 	render(player: Player, _canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, scale: number): void {
-		this.currentFistSVG.src = "assets/images/game/fists/" + player.skin + ".svg";
 		const radius = scale * player.hitbox.comparable;
 		const fistRadius = radius / 3;
 		const fistPositions = [new Vec2(player.hitbox.comparable, 0.1), new Vec2(player.hitbox.comparable + 0.25, -0.1)];
@@ -108,13 +106,12 @@ export class GunWeapon extends Weapon {
 		if (!this.hasBarrelImage)
 			roundRect(ctx, player.hitbox.comparable * scale, -0.15 * scale, this.length * scale, 0.3 * scale, 0.15 * scale, true, true);
 		else {
-			const img = GunWeapon.barrelImages.get(this.id);
-			if (!img?.loaded) {
+			const img = GunWeapon.barrelImages.get(this.nameId);
+			if (!img?.complete) {
 				if (!img) {
-					const image: HTMLImageElement & { loaded: boolean } = Object.assign(new Image(), { loaded: false });
-					image.onload = () => image.loaded = true;
-					image.src = getBarrelImagePath(this.id);
-					GunWeapon.barrelImages.set(this.id, image);
+					const image = new Image();
+					image.src = getBarrelImagePath(this.nameId);
+					GunWeapon.barrelImages.set(this.nameId, image);
 				}
 				roundRect(ctx, player.hitbox.comparable * scale, -0.15 * scale, this.length * scale, 0.3 * scale, 0.15 * scale, true, true);
 			} else
@@ -122,10 +119,16 @@ export class GunWeapon extends Weapon {
 		}
 		ctx.lineWidth = fistRadius / 3;
 		ctx.strokeStyle = "#000000";
-		for (const pos of fistPositions) {
-			const fist = pos.addVec(offset).scaleAll(scale);
-			ctx.drawImage(this.currentFistSVG, fist.x - fistRadius, fist.y - fistRadius, fistRadius *2, fistRadius*2)
-		}
+		const img = MeleeWeapon.fistImages.get(player.skin!);
+		if (!img) {
+			const newImg = new Image();
+			MeleeWeapon.fistImages.set(player.skin!, newImg);
+			newImg.src = "assets/images/game/fists/" + player.skin + ".svg";
+		} else if (img.complete)
+			for (const pos of fistPositions) {
+				const fist = pos.addVec(offset).scaleAll(scale);
+				ctx.drawImage(img, fist.x - fistRadius, fist.y - fistRadius, fistRadius *2, fistRadius*2)
+			}
 	}
 }
 
